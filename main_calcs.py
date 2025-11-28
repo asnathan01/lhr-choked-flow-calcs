@@ -144,8 +144,7 @@ def compute_p_star(P_t: float, gamma: float) -> float:
     """
     p_star = P_t / (((gamma + 1.0) / 2.0) ** (gamma / (gamma - 1.0)))
     return p_star
-
-# Pressure Recovery post restrictor - Manifold absolute pressure (MAP)
+    
 # Engine flow rate calculation
 # Choked flow check (engine flow rate vs. choked flow rate) 
 # Pumping power calculation
@@ -161,7 +160,7 @@ if __name__ == "__main__":
     # Manifold absolute pressure (MAP) at 12000 RPM (tunable input) - taken from dyno datalog
     # I will be using this value for pumping power calcs - I do not think that the MAP drops to critical pressure seen at restrictor throat
     # This is the secondary / engine facing side of the overall intake flow - in my model, I treat the throttle --> restricotr outlet as section 1 and restrictor outlet --> engine inlet as section 2
-    
+
     MAP_psia = 11.5
     MAP_Pa = psi_pa(MAP_psia)   # now we have MAP in Pa
 
