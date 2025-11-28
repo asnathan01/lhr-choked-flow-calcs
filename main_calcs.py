@@ -10,7 +10,7 @@ Assumptions:
 - Steady, 1-D, adiabatic, isentropic flow up to the throat.
 - Flow is choked at the throat (Mach = 1 at minimum area) - we can go back and look at this
 - Upstream “reservoir” is the airbox / ambient just before the restrictor:
-    -> Flow speed is low, so stagnation ≈ static - we can revisit this as well
+    -> Flow speed is low, so stagnation ≈ static - we can revisit this as well to account for forward velocity
     -> P_t ≈ P_ambient,  T_t ≈ T_ambient.
 - Discharge coefficient C_d can be modified as needed
 """
@@ -116,14 +116,64 @@ def compute_restrictor_choked_mdot(
         "m_dot_lb_hr": m_dot_lb_hr,
     }
 
+# P-Star Calculation (Critical pressure at throat)
+
+# ----------------------------------------------------------------------
+# Critical pressure at the throat (p-star)
+#
+# Assumptions:
+# - Same gas model as main calculation (dry air, ideal gas behavior).
+# - Stagnation/total pressure upstream is P_t.
+# - Flow is isentropic up to the throat.
+#
+# Equation (isentropic relation for M = 1 at throat):
+#   p_star = P_t / ((gamma + 1)/2) ** (gamma / (gamma - 1))
+#
+# This is the static pressure at the throat when the flow is just choked.
+# ----------------------------------------------------------------------
+def compute_p_star(P_t: float, gamma: float) -> float:
+    """
+    Compute critical (sonic) pressure p* at the throat.
+
+    Inputs:
+        P_t   : upstream total (stagnation) pressure [Pa]
+        gamma : heat capacity ratio cp/cv [-]
+
+    Returns:
+        p_star : critical static pressure at throat [Pa]
+    """
+    p_star = P_t / (((gamma + 1.0) / 2.0) ** (gamma / (gamma - 1.0)))
+    return p_star
+
+# Pressure Recovery post restrictor - Manifold absolute pressure (MAP)
+# Engine flow rate calculation
+# Choked flow check (engine flow rate vs. choked flow rate) 
+# Pumping power calculation
+
 
 if __name__ == "__main__":
+    # User / test inputs
+    d_mm = 20.0
+    Cd = 0.90
+    P_amb_kpa = 101.325    # ambient upstream
+    T_amb_C = 20.0
+
+    # Manifold absolute pressure (MAP) at 12000 RPM (tunable input) - taken from dyno datalog
+    # I will be using this value for pumping power calcs - I do not think that the MAP drops to critical pressure seen at restrictor throat
+    # This is the secondary / engine facing side of the overall intake flow - in my model, I treat the throttle --> restricotr outlet as section 1 and restrictor outlet --> engine inlet as section 2
+    
+    MAP_psia = 11.5
+    MAP_Pa = psi_pa(MAP_psia)   # now we have MAP in Pa
+
     result = compute_restrictor_choked_mdot(
-        d_mm=20.0,
-        Cd=0.90,
-        P_amb_kpa=101.325,
-        T_amb_C=20.0,
+        d_mm=d_mm,
+        Cd=Cd,
+        P_amb_kpa=P_amb_kpa,
+        T_amb_C=T_amb_C,
     )
+
+    p_star = compute_p_star(result["P_t"], result["gamma"])
+
 
     print("=== Restrictor Choked Flow Calculation ===")
     print(f"Diameter (m)          : {result['d_m']:.6f}")
@@ -136,3 +186,11 @@ if __name__ == "__main__":
     print(f"prop_factor           : {result['prop_factor']:.6e}")
     print(f"m_dot (kg/s)          : {result['m_dot_kg_s']:.5f}")
     print(f"m_dot (lb/hr)         : {result['m_dot_lb_hr']:.1f}")
+    print(f"p* (Pa)               : {p_star:.1f}")
+    print(f"p* (kPa)              : {p_star/1000:.2f}")
+
+
+
+
+
+
