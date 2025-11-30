@@ -133,7 +133,7 @@ def compute_restrictor_choked_mdot(
 # Equation (isentropic relation for M = 1 at throat):
 #   p_star = P_t / ((gamma + 1)/2) ** (gamma / (gamma - 1))
 #
-# This is the static pressure at the throat when the flow is just choked.
+#
 # ----------------------------------------------------------------------
 def compute_p_star(P_t: float, gamma: float) -> float:
     """
@@ -148,6 +148,72 @@ def compute_p_star(P_t: float, gamma: float) -> float:
     """
     p_star = P_t / (((gamma + 1.0) / 2.0) ** (gamma / (gamma - 1.0)))
     return p_star
+
+# Direct mass flow calculation using density × area × velocity
+
+# ----------------------------------------------------------------------
+# Direct mass flow rate calculation: m_dot = rho × A × V
+#
+# Simple calculation using the continuity equation.
+# Uses CoolProp to get density from pressure and temperature.
+#
+# Equation:
+#   rho = rho(P, T) from CoolProp
+#   m_dot = rho * A * V
+# ----------------------------------------------------------------------
+def compute_mass_flow_from_velocity(
+    d_mm: float,
+    velocity_m_s: float,
+    P_kpa: float,
+    T_C: float,
+    fluid: str = "Air",
+) -> dict:
+    """
+    Calculate mass flow rate using density × area × velocity.
+
+    Inputs:
+        d_mm         : Throat diameter [mm]
+        velocity_m_s : Throat velocity [m/s]
+        P_kpa        : Pressure at throat [kPa]
+        T_C          : Temperature at throat [°C]
+        fluid        : Working fluid for CoolProp (default 'Air')
+
+    Returns:
+        dict with:
+            - d_m           : diameter [m]
+            - A_m2          : area [m^2]
+            - P_Pa          : pressure [Pa]
+            - T_K           : temperature [K]
+            - rho           : density [kg/m^3]
+            - velocity_m_s  : velocity [m/s]
+            - m_dot_kg_s    : mass flow [kg/s]
+            - m_dot_lb_hr    : mass flow [lb/hr]
+    """
+    # Convert inputs to SI units
+    d_m = mm_m(d_mm)
+    P_Pa = kpa_pa(P_kpa)
+    T_K = c_k(T_C)
+
+    # Calculate throat area
+    A_m2 = math.pi * (d_m ** 2) / 4.0
+
+    # Get density from CoolProp
+    rho = PropsSI("Dmass", "P", P_Pa, "T", T_K, fluid)
+
+    # Mass flow rate: m_dot = rho × A × V
+    m_dot_kg_s = rho * A_m2 * velocity_m_s
+    m_dot_lb_hr = kgs_lbhr(m_dot_kg_s)
+
+    return {
+        "d_m": d_m,
+        "A_m2": A_m2,
+        "P_Pa": P_Pa,
+        "T_K": T_K,
+        "rho": rho,
+        "velocity_m_s": velocity_m_s,
+        "m_dot_kg_s": m_dot_kg_s,
+        "m_dot_lb_hr": m_dot_lb_hr,
+    }
 
 # Engine flow rate calculation
 
@@ -583,6 +649,16 @@ if __name__ == "__main__":
     ratio = mfr_engine / mfr_restrictor
     is_choking = ratio >= 1.0
 
+    # Direct mass flow calculation using velocity (rho × A × V)
+
+    velocity_m_s = 250.0  # throat velocity - adjust here
+    velocity_mfr = compute_mass_flow_from_velocity(
+        d_mm=d_mm,
+        velocity_m_s=velocity_m_s,
+        P_kpa=p_star/1000.0,  # Using p* pressure
+        T_C=T_amb_C,
+    )
+
     # Pumping power calculations
     pump_map = compute_pumping_power(
         P_t_Pa=restrictor["P_t"],
@@ -615,6 +691,9 @@ if __name__ == "__main__":
     print(f"p* (kPa)                   : {p_star/1000:.2f}")
     print(f"Engine / Restrictor Ratio  : {ratio:.3f}")
     print(f"Restrictor Choking Check   : {'YES' if is_choking else 'NO'}")
+    print()
+    print(f"Velocity-based MFR (kg/s)        : {velocity_mfr['m_dot_kg_s']:.5f}")
+    print(f"  (V={velocity_m_s:.0f} m/s, P=p*={p_star/1000:.2f} kPa, T={T_amb_C:.1f}°C)")
     print()
     print(f"Pumping Power (MAP) (hp)  : {pump_map['P_pump_hp']:.3f}")
     print(f"Pumping Power (p*) (hp)    : {pump_pstar['P_pump_hp']:.3f}")
