@@ -1,3 +1,5 @@
 pint>=0.20
 CoolProp>=6.4
+matplotlib>=3.5
+numpy>=1.20
 
