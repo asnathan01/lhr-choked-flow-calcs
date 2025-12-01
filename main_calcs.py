@@ -680,6 +680,14 @@ if __name__ == "__main__":
         eta=0.30,
     )
 
+    # Power estimate from velocity-based MFR
+    power_velocity = compute_engine_power_from_airflow(
+        m_dot_air_kg_s=velocity_mfr["m_dot_kg_s"],
+        AFR=14.7,
+        LHV_J_per_kg=43e6,
+        eta=0.30,
+    )
+
     # Net power calculations (subtract pumping losses)
     P_net_map_hp = power["P_brake_hp"] - pump_map["P_pump_hp"]
     P_net_pstar_hp = power["P_brake_hp"] - pump_pstar["P_pump_hp"]
@@ -701,6 +709,7 @@ if __name__ == "__main__":
     print(f"Engine Power (hp)          : {power['P_brake_hp']:.2f}")
     print(f"Net Power (MAP approach)  : {P_net_map_hp:.2f} hp")
     print(f"Net Power (p* approach)    : {P_net_pstar_hp:.2f} hp")
+    print(f"Net Power (velocity approach) : {power_velocity['P_brake_hp']:.2f} hp")
     print("=" * 50)
 
     # Plot restrictor vs engine flow
